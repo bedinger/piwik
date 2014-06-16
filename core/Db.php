@@ -266,19 +266,25 @@ class Db
      */
     static public function deleteAllRows($table, $where, $orderBy, $maxRowsPerQuery = 100000, $parameters = array())
     {
-        $orderByClause = $orderBy ? "ORDER BY $orderBy" : "";
-        $sql = "DELETE FROM $table
-                $where
-                $orderByClause
-                LIMIT " . (int)$maxRowsPerQuery;
+        #AB 1/26/12 Adjusted to not use a LIMIT on deletes
+        #AB 1/29/14 Applied old update to 2.0.3 code
+        #AB 3/6/14 Applied old update to 2.1.0 code
+        #$orderByClause = $orderBy ? "ORDER BY $orderBy" : "";
+        $sql = "DELETE FROM $table $where";
+        $totalRowsDeleted = self::query($sql, $parameters)->rowCount();
+
+        #$sql = "DELETE FROM $table
+        #        $where
+        #        $orderByClause
+        #        LIMIT " . (int)$maxRowsPerQuery;
 
         // delete rows w/ a limit
-        $totalRowsDeleted = 0;
-        do {
-            $rowsDeleted = self::query($sql, $parameters)->rowCount();
-
-            $totalRowsDeleted += $rowsDeleted;
-        } while ($rowsDeleted >= $maxRowsPerQuery);
+        #$totalRowsDeleted = 0;
+        #do {
+        #    $rowsDeleted = self::query($sql, $parameters)->rowCount();
+	#
+        #    $totalRowsDeleted += $rowsDeleted;
+        #} while ($rowsDeleted >= $maxRowsPerQuery);
 
         return $totalRowsDeleted;
     }

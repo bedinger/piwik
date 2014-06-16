@@ -266,7 +266,9 @@ _S3_LOG_FORMAT = (
 _ICECAST2_LOG_FORMAT = ( _NCSA_EXTENDED_LOG_FORMAT +
     ' (?P<session_time>\S+)'
 )
-
+_JWORG_LOG_FORMAT = (_NCSA_EXTENDED_LOG_FORMAT +
+    ' (?P<pageid>.*)'
+)
 FORMATS = {
     'common': RegexFormat('common', _COMMON_LOG_FORMAT),
     'common_vhost': RegexFormat('common_vhost', _HOST_PREFIX + _COMMON_LOG_FORMAT),
@@ -276,6 +278,7 @@ FORMATS = {
     's3': RegexFormat('s3', _S3_LOG_FORMAT),
     'icecast2': RegexFormat('icecast2', _ICECAST2_LOG_FORMAT),
     'nginx_json': JsonFormat('nginx_json'),
+    'jworg': RegexFormat('jworg', _JWORG_LOG_FORMAT),
 }
 
 
@@ -886,7 +889,7 @@ class Piwik(object):
         pass
 
     @staticmethod
-    def _call(path, args, headers=None, url=None, data=None):
+    def _call(path, args, headers=None, url=None, tracking=False, data=None):
         """
         Make a request to the Piwik site. It is up to the caller to format
         arguments, to embed authentication, etc.
@@ -904,9 +907,13 @@ class Piwik(object):
 
         headers['User-Agent'] = 'Piwik/LogImport'
         request = urllib2.Request(url + path, data, headers)
-        response = urllib2.urlopen(request)
-        result = response.read()
-        response.close()
+        if tracking and config.options.dry_run:
+            result = None
+            print "URL: %s %s DATA: %s" % (request.get_method(), request.get_full_url(), request.get_data())
+        else:
+            response = urllib2.urlopen(request)
+            result = response.read()
+            response.close()
         return result
 
     @staticmethod
@@ -986,8 +993,8 @@ class Piwik(object):
                     time.sleep(PIWIK_DELAY_AFTER_FAILURE)
 
     @classmethod
-    def call(cls, path, args, expected_content=None, headers=None, data=None, on_failure=None):
-        return cls._call_wrapper(cls._call, expected_content, on_failure, path, args, headers,
+    def call(cls, path, args, expected_content=None, headers=None, tracking=False, data=None, on_failure=None):
+        return cls._call_wrapper(cls._call, expected_content, on_failure, path, args, headers, None, tracking,
                                     data=data)
 
     @classmethod
@@ -1293,6 +1300,10 @@ class Recorder(object):
 
         args.update(hit.args)
 
+        # Initialize a dictionary for holding custom variable data
+        cvar_dict={}
+        cvar_dict_pos=1
+
         if hit.is_download:
             args['download'] = args['url']
 
@@ -1305,36 +1316,52 @@ class Recorder(object):
 
         # do not overwrite custom variables if it's already set (eg. when replaying ecommerce logs)
         if 'cvar' not in args:
-            args['cvar'] = '{"1":["HTTP-code","%s"]}' % hit.status
+            #args['cvar'] = '{"1":["HTTP-code","%s"]}' % hit.status
+            # Add the HTTP code to the custom variable dictionary
+            cvar_http_code=["HTTP-code","%s" % hit.status]
+            cvar_dict[cvar_dict_pos]=cvar_http_code
+            cvar_dict_pos+=1
 
         if hit.is_error or hit.is_redirect:
-			args['action_name'] = '%s/URL = %s%s' % (
-				hit.status,
-				urllib.quote(args['url'], ''),
-				("/From = %s" % urllib.quote(args['urlref'], '') if args['urlref'] != ''  else '')
-			)
-
+	    args['action_name'] = '%s/URL = %s%s' % (
+		hit.status,
+		urllib.quote(args['url'], ''),
+		("/From = %s" % urllib.quote(args['urlref'], '') if args['urlref'] != ''  else '')
+	    )
+        # Add the pageid custom variable to the custom variable dictionary
+        if hit.pageid != "-":
+            cvar_page_id=["id", "%s" % hit.pageid]
+            cvar_dict[cvar_dict_pos]=cvar_page_id
+            cvar_dict_pos+=1
         if hit.generation_time_milli > 0:
             args['gt_ms'] = hit.generation_time_milli
+
+        # JSON-encode the cvar dictionary if it has anything in it
+        if len(cvar_dict) > 0:
+            args['cvar'] = json.JSONEncoder().encode(cvar_dict)
+
         return args
 
     def _record_hits(self, hits):
         """
         Inserts several hits into Piwik.
         """
+        data = {
+            'token_auth': config.options.piwik_token_auth,
+            'requests': [self._get_hit_args(hit) for hit in hits]
+        }
+
+        piwik.call(
+            '/piwik.php', args={},
+            expected_content=None,
+            headers={'Content-type': 'application/json'},
+            tracking=True,
+            data=data,
+            on_failure=self._on_tracking_failure
+        )
+        
         if not config.options.dry_run:
-            data = {
-                'token_auth': config.options.piwik_token_auth,
-                'requests': [self._get_hit_args(hit) for hit in hits]
-            }
-            piwik.call(
-                '/piwik.php', args={},
-                expected_content=None,
-                headers={'Content-type': 'application/json'},
-                data=data,
-                on_failure=self._on_tracking_failure
-            )
-        stats.count_lines_recorded.advance(len(hits))
+            stats.count_lines_recorded.advance(len(hits))
 
     def _on_tracking_failure(self, response, data):
         """
@@ -1622,6 +1649,7 @@ class Parser(object):
                 lineno=lineno,
                 status=format.get('status'),
                 full_path=format.get('path'),
+		pageid=format.get('pageid'),
                 is_download=False,
                 is_robot=False,
                 is_error=False,

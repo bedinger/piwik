@@ -461,10 +461,11 @@ class CronArchive
         }
 
         $success = true;
-        foreach (array('week', 'month', 'year') as $period) {
-            $success = $this->archiveVisitsAndSegments($idSite, $period, $lastTimestampWebsiteProcessedPeriods)
-                && $success;
-        }
+	# AB 4/10/14 No week, month, or year aggregations. It takes too long.
+        #foreach (array('week', 'month', 'year') as $period) {
+        #    $success = $this->archiveVisitsAndSegments($idSite, $period, $lastTimestampWebsiteProcessedPeriods)
+        #        && $success;
+        #}
         // Record succesful run of this website's periods archiving
         if ($success) {
             Option::set($this->lastRunKey($idSite, "periods"), time());
