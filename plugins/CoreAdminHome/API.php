@@ -88,7 +88,7 @@ class API extends \Piwik\Plugin\API
 
         // If using the feature "Delete logs older than N days"...
         $purgeDataSettings = PrivacyManager::getPurgeDataSettings();
-        $logsAreDeletedBeforeThisDate = $purgeDataSettings['delete_logs_schedule_lowest_interval'];
+        $logsAreDeletedBeforeThisDate = $purgeDataSettings['delete_logs_older_than'];
         $logsDeleteEnabled = $purgeDataSettings['delete_logs_enable'];
         $minimumDateWithLogs = false;
         if ($logsDeleteEnabled
