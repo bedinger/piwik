@@ -55,3 +55,7 @@ tests/PHPUnit/proxy/piwik.js
 tests/PHPUnit/proxy/plugins
 tests/PHPUnit/proxy/tests
 config/*.config.ini.php
+composer.lock
+current.php
+last.php
+previous.php
