@@ -1,5 +1,5 @@
 /*!
- * Piwik - Web Analytics
+ * Piwik - free/libre analytics platform
  *
  * @link http://piwik.org
  * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
@@ -72,7 +72,7 @@ widgetsHelper.getWidgetNameFromUniqueId = function (uniqueId) {
  * @param {function} onWidgetLoadedCallback   callback to be executed after widget is loaded
  * @return {object}
  */
-widgetsHelper.loadWidgetAjax = function (widgetUniqueId, widgetParameters, onWidgetLoadedCallback) {
+widgetsHelper.loadWidgetAjax = function (widgetUniqueId, widgetParameters, onWidgetLoadedCallback, onWidgetErrorCallback) {
     var disableLink = broadcast.getValueFromUrl('disableLink');
     if (disableLink.length) {
         widgetParameters['disableLink'] = disableLink;
@@ -83,6 +83,9 @@ widgetsHelper.loadWidgetAjax = function (widgetUniqueId, widgetParameters, onWid
     var ajaxRequest = new ajaxHelper();
     ajaxRequest.addParams(widgetParameters, 'get');
     ajaxRequest.setCallback(onWidgetLoadedCallback);
+    if (onWidgetErrorCallback) {
+        ajaxRequest.setErrorCallback(onWidgetErrorCallback);
+    }
     ajaxRequest.setFormat('html');
     ajaxRequest.send(false);
     return ajaxRequest;
@@ -224,7 +227,12 @@ widgetsHelper.loadWidgetAjax = function (widgetUniqueId, widgetParameters, onWid
 
                 if ($('.' + settings.categorylistClass + ' .' + settings.choosenClass, widgetPreview).length) {
                     var position = $('.' + settings.categorylistClass + ' .' + settings.choosenClass, widgetPreview).position().top -
-                        $('.' + settings.categorylistClass, widgetPreview).position().top;
+                        $('.' + settings.categorylistClass, widgetPreview).position().top +
+                        $('.dashboard-manager .addWidget').outerHeight();
+
+                    if (!$('#content.admin').length) {
+                        position += 10; // + padding defined in dashboard view
+                    }
 
                     $('.' + settings.widgetlistClass, widgetPreview).css('top', position);
                     $('.' + settings.widgetlistClass, widgetPreview).css('marginBottom', position);
@@ -278,6 +286,7 @@ widgetsHelper.loadWidgetAjax = function (widgetUniqueId, widgetParameters, onWid
                 $('li:not(.' + settings.unavailableClass + ')', widgetList).on('click', function () {
                     if (!$('.widgetLoading', widgetPreview).length) {
                         settings.onSelect($(this).attr('uniqueid'));
+                        $(widgetPreview).closest('.dashboard-manager').removeClass('expanded');
                         if (settings.resetOnSelect) {
                             resetWidgetPreview(widgetPreview);
                         }
@@ -338,6 +347,7 @@ widgetsHelper.loadWidgetAjax = function (widgetUniqueId, widgetParameters, onWid
                     settings.onPreviewLoaded(widgetUniqueId, widgetElement);
                     $('.' + settings.widgetpreviewClass + ' .widgetTop', widgetPreview).on('click', function () {
                         settings.onSelect(widgetUniqueId);
+                        $(widgetPreview).closest('.dashboard-manager').removeClass('expanded');
                         if (settings.resetOnSelect) {
                             resetWidgetPreview(widgetPreview);
                         }

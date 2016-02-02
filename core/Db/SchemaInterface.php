@@ -15,13 +15,6 @@ namespace Piwik\Db;
 interface SchemaInterface
 {
     /**
-     * Is this schema available?
-     *
-     * @return bool  True if schema is available; false otherwise
-     */
-    static public function isAvailable();
-
-    /**
      * Get the SQL to create a specific Piwik table
      *
      * @param string $tableName
@@ -86,6 +79,15 @@ interface SchemaInterface
      * @return array  installed Tables
      */
     public function getTablesInstalled($forceReload = true);
+
+    /**
+     * Get list of installed columns in a table
+     *
+     * @param  string $tableName The name of a table.
+     *
+     * @return array  Installed columns indexed by the column name.
+     */
+    public function getTableColumns($tableName);
 
     /**
      * Checks whether any table exists

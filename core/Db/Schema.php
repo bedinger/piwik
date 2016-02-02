@@ -29,7 +29,6 @@ class Schema extends Singleton
      */
     private $schema = null;
 
-
     /**
      * Get schema class name
      *
@@ -39,7 +38,7 @@ class Schema extends Singleton
     private static function getSchemaClassName($schemaName)
     {
         // Upgrade from pre 2.0.4
-        if(strtolower($schemaName) == 'myisam'
+        if (strtolower($schemaName) == 'myisam'
             || empty($schemaName)) {
             $schemaName = self::DEFAULT_SCHEMA;
         }
@@ -48,79 +47,17 @@ class Schema extends Singleton
         return '\Piwik\Db\Schema\\' . $class;
     }
 
-    /**
-     * Get list of schemas
-     *
-     * @param string $adapterName
-     * @return array
-     */
-    public static function getSchemas($adapterName)
-    {
-        static $allSchemaNames = array(
-            'MYSQL' => array(
-                self::DEFAULT_SCHEMA,
-                // InfiniDB
-            ),
-
-            // Microsoft SQL Server
-//			'MSSQL' => array( 'Mssql' ),
-
-            // PostgreSQL
-//			'PDO_PGSQL' => array( 'Pgsql' ),
-
-            // IBM DB2
-//			'IBM' => array( 'Ibm' ),
-
-            // Oracle
-//			'OCI' => array( 'Oci' ),
-        );
-
-        $adapterName = strtoupper($adapterName);
-        switch ($adapterName) {
-            case 'PDO_MYSQL':
-            case 'MYSQLI':
-                $adapterName = 'MYSQL';
-                break;
-
-            case 'PDO_MSSQL':
-            case 'SQLSRV':
-                $adapterName = 'MSSQL';
-                break;
-
-            case 'PDO_IBM':
-            case 'DB2':
-                $adapterName = 'IBM';
-                break;
-
-            case 'PDO_OCI':
-            case 'ORACLE':
-                $adapterName = 'OCI';
-                break;
-        }
-        $schemaNames = $allSchemaNames[$adapterName];
-
-        $schemas = array();
-
-        foreach ($schemaNames as $schemaName) {
-            $className = __NAMESPACE__ . '\\Schema\\' . $schemaName;
-            if (call_user_func(array($className, 'isAvailable'))) {
-                $schemas[] = $schemaName;
-            }
-        }
-
-        return $schemas;
-    }
 
     /**
      * Load schema
      */
     private function loadSchema()
     {
-        $config = Config::getInstance();
-        $dbInfos = $config->database;
+        $config     = Config::getInstance();
+        $dbInfos    = $config->database;
         $schemaName = trim($dbInfos['schema']);
 
-        $className = self::getSchemaClassName($schemaName);
+        $className    = self::getSchemaClassName($schemaName);
         $this->schema = new $className();
     }
 
@@ -134,6 +71,7 @@ class Schema extends Singleton
         if ($this->schema === null) {
             $this->loadSchema();
         }
+
         return $this->schema;
     }
 
@@ -231,6 +169,18 @@ class Schema extends Singleton
     public function getTablesInstalled($forceReload = true)
     {
         return $this->getSchema()->getTablesInstalled($forceReload);
+    }
+
+    /**
+     * Get list of installed columns in a table
+     *
+     * @param  string $tableName The name of a table.
+     *
+     * @return array  Installed columns indexed by the column name.
+     */
+    public function getTableColumns($tableName)
+    {
+        return $this->getSchema()->getTableColumns($tableName);
     }
 
     /**

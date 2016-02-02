@@ -1,5 +1,5 @@
 /*!
- * Piwik - Web Analytics
+ * Piwik - free/libre analytics platform
  *
  * UI tests config
  *
@@ -13,7 +13,7 @@ var __dirname = phantom.libraryPath;
 
 var PIWIK_INCLUDE_PATH = path.join(__dirname, '..', '..', '..');
 
-var uiTestsDir = path.join(PIWIK_INCLUDE_PATH, 'tests', 'PHPUnit', 'UI')
+var uiTestsDir = path.join(PIWIK_INCLUDE_PATH, 'tests', 'UI')
 
 var testsLibDir = path.join(__dirname, "..", "..", "lib");
 

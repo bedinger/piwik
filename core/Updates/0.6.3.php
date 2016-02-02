@@ -18,17 +18,17 @@ use Piwik\Updates;
  */
 class Updates_0_6_3 extends Updates
 {
-    static function getSql()
+    public function getMigrationQueries(Updater $updater)
     {
         return array(
             'ALTER TABLE `' . Common::prefixTable('log_visit') . '`
-				CHANGE `location_ip` `location_ip` INT UNSIGNED NOT NULL'                                                           => false,
+				CHANGE `location_ip` `location_ip` INT UNSIGNED NOT NULL'                   => 1054,
             'ALTER TABLE `' . Common::prefixTable('logger_api_call') . '`
-				CHANGE `caller_ip` `caller_ip` INT UNSIGNED' => false,
+				CHANGE `caller_ip` `caller_ip` INT UNSIGNED'                                => array(1054, 1146),
         );
     }
 
-    static function update()
+    public function doUpdate(Updater $updater)
     {
         $config = Config::getInstance();
         $dbInfos = $config->database;
@@ -44,6 +44,6 @@ class Updates_0_6_3 extends Updates
             }
         }
 
-        Updater::updateDatabase(__FILE__, self::getSql());
+        $updater->executeMigrationQueries(__FILE__, $this->getMigrationQueries($updater));
     }
 }

@@ -9,18 +9,13 @@
  */
 
 namespace Piwik\Plugins\Widgetize;
-use Piwik\Menu\MenuTop;
-use Piwik\Piwik;
 
-/**
- *
- */
 class Widgetize extends \Piwik\Plugin
 {
     /**
-     * @see Piwik\Plugin::getListHooksRegistered
+     * @see Piwik\Plugin::registerEvents
      */
-    public function getListHooksRegistered()
+    public function registerEvents()
     {
         return array(
             'AssetManager.getJavaScriptFiles'        => 'getJsFiles',
@@ -32,7 +27,7 @@ class Widgetize extends \Piwik\Plugin
     public function getJsFiles(&$jsFiles)
     {
         $jsFiles[] = "libs/jquery/jquery.truncate.js";
-        $jsFiles[] = "libs/jquery/jquery.scrollTo.js";
+        $jsFiles[] = "libs/bower_components/jquery.scrollTo/jquery.scrollTo.min.js";
         $jsFiles[] = "plugins/Morpheus/javascripts/piwikHelper.js";
         $jsFiles[] = "plugins/Morpheus/javascripts/jquery.icheck.min.js";
         $jsFiles[] = "plugins/Morpheus/javascripts/morpheus.js";

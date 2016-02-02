@@ -5,15 +5,20 @@
  * @link http://piwik.org
  * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+namespace Piwik\Tests\Fixtures;
+
+use Piwik\Access;
 use Piwik\ArchiveProcessor\Rules;
 use Piwik\Config;
 use Piwik\Db;
-use Piwik\Piwik;
+use Piwik\Tests\Framework\Fixture;
+use Exception;
+use Piwik\Tests\Framework\TestingEnvironmentVariables;
 
 /**
  * Reusable fixture. Loads a SQL dump into the DB.
  */
-class Piwik_Test_Fixture_SqlDump extends Fixture
+class SqlDump extends Fixture
 {
     public $date = '2012-09-03';
     public $dateTime = '2012-09-03';
@@ -32,20 +37,12 @@ class Piwik_Test_Fixture_SqlDump extends Fixture
             $dumpPath = $this->dumpUrl;
         } else {
             $dumpPath = PIWIK_INCLUDE_PATH . '/tmp/logdump.sql.gz';
-            $bufferSize = 1024 * 1024;
+            $bytesRead = $this->downloadDumpInPath($dumpPath);
 
-            $dump = fopen($this->dumpUrl, 'rb');
-            $outfile = fopen($dumpPath, 'wb');
-            $bytesRead = 0;
-            while (!feof($dump)) {
-                fwrite($outfile, fread($dump, $bufferSize), $bufferSize);
-                $bytesRead += $bufferSize;
-            }
-            fclose($dump);
-            fclose($outfile);
-
-            if ($bytesRead <= 40 * 1024 * 1024) { // sanity check
-                throw new Exception("Could not download sql dump!");
+            // sanity check
+            if ($bytesRead <= 40 * 1024 * 1024) {
+                $str = "Could not download sql dump! You can manually download %s into %s";
+                throw new Exception(sprintf($str, $this->dumpUrl, $dumpPath));
             }
         }
 
@@ -63,9 +60,10 @@ class Piwik_Test_Fixture_SqlDump extends Fixture
         // load the data into the correct database
         $user = Config::getInstance()->database['username'];
         $password = Config::getInstance()->database['password'];
+        $host = Config::getInstance()->database['host'];
         Config::getInstance()->database['tables_prefix'] = $this->tablesPrefix;
 
-        $cmd = "mysql -u \"$user\" \"--password=$password\" {$this->dbName} < \"" . $deflatedDumpPath . "\" 2>&1";
+        $cmd = "mysql -h \"$host\" -u \"$user\" \"--password=$password\" {$this->dbName} < \"" . $deflatedDumpPath . "\" 2>&1";
         exec($cmd, $output, $return);
         if ($return !== 0) {
             throw new Exception("Failed to load sql dump: " . implode("\n", $output));
@@ -75,18 +73,36 @@ class Piwik_Test_Fixture_SqlDump extends Fixture
         Rules::setBrowserTriggerArchiving(true);
 
         // reload access
-        Piwik::setUserHasSuperUserAccess();
+        Access::getInstance()->reloadAccess();
 
-        $this->getTestEnvironment()->configOverride = array(
+        $testVars = new TestingEnvironmentVariables();
+        $testVars->configOverride = array(
             'database' => array(
                 'tables_prefix' => $this->tablesPrefix
             )
         );
-        $this->getTestEnvironment()->save();
+        $testVars->save();
     }
 
-    public function tearDown()
+    /**
+     * maybe this could use downloadAndUnzip(self::$geoLiteCityDbUrl, $geoIpOutputDir, 'GeoIPCity.dat');
+     *
+     * @param $dumpPath
+     * @return int
+     */
+    protected function downloadDumpInPath($dumpPath)
     {
-        // empty
+        $bufferSize = 1024 * 1024;
+
+        $dump = fopen($this->dumpUrl, 'rb');
+        $outfile = fopen($dumpPath, 'wb');
+        $bytesRead = 0;
+        while (!feof($dump)) {
+            fwrite($outfile, fread($dump, $bufferSize), $bufferSize);
+            $bytesRead += $bufferSize;
+        }
+        fclose($dump);
+        fclose($outfile);
+        return $bytesRead;
     }
 }

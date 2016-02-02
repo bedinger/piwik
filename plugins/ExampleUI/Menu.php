@@ -9,7 +9,7 @@
 namespace Piwik\Plugins\ExampleUI;
 
 use Piwik\Menu\MenuReporting;
-use Piwik\Menu\MenuTop;
+use Piwik\Menu\MenuUser;
 use Piwik\Plugin\Manager as PluginManager;
 
 /**
@@ -18,7 +18,7 @@ class Menu extends \Piwik\Plugin\Menu
 {
     public function configureReportingMenu(MenuReporting $menu)
     {
-        $menu->add('UI Framework', '', array('module' => 'ExampleUI', 'action' => 'dataTables'), true, 30);
+        $menu->addItem('UI Framework', '', array(), 30);
 
         $this->addSubMenu($menu, 'Data tables', 'dataTables', 1);
         $this->addSubMenu($menu, 'Bar graph', 'barGraph', 2);
@@ -32,14 +32,13 @@ class Menu extends \Piwik\Plugin\Menu
         }
     }
 
-    public function configureTopMenu(MenuTop $menu)
+    public function configureUserMenu(MenuUser $menu)
     {
-        $urlParams = array('module' => 'ExampleUI', 'action' => 'notifications');
-        $menu->add('UI Notifications', null, $urlParams, $displayedForCurrentUser = true, $order = 3);
+        $menu->addPlatformItem('UI Notifications', $this->urlForAction('notifications'), $order = 10);
     }
 
     private function addSubMenu(MenuReporting $menu, $subMenu, $action, $order)
     {
-        $menu->add('UI Framework', $subMenu, array('module' => 'ExampleUI', 'action' => $action), true, $order);
+        $menu->addItem('UI Framework', $subMenu, $this->urlForAction($action), $order);
     }
 }

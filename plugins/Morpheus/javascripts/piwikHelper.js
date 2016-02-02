@@ -1,10 +1,9 @@
 /*!
- * Piwik - Web Analytics
+ * Piwik - free/libre analytics platform
  *
  * @link http://piwik.org
  * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
-
 
 function _pk_translate(translationStringId, values) {
 
@@ -82,7 +81,14 @@ var piwikHelper = {
         }
         return value;
     },
-	
+
+    escape: function (value)
+    {
+        var escape = angular.element(document).injector().get('$sanitize');
+
+        return escape(value);
+    },
+
 	/**
 	 * Add break points to a string so that it can be displayed more compactly
 	 */
@@ -119,10 +125,26 @@ var piwikHelper = {
     compileAngularComponents: function (selector) {
         var $element = $(selector);
 
+        if (!$element.length) {
+            return;
+        }
+
         angular.element(document).injector().invoke(function($compile) {
             var scope = angular.element($element).scope();
             $compile($element)(scope);
         });
+    },
+
+    /**
+     * Detection works currently only for directives defining an isolated scope. Functionality might need to be
+     * extended if needed. Under circumstances you might call this method before calling compileAngularComponents()
+     * to avoid compiling the same element twice.
+     * @param selector
+     */
+    isAlreadyCompiledAngularComponent: function (selector) {
+        var $element = $(selector);
+
+        return ($element.length && $element.hasClass('ng-isolate-scope'));
     },
 
     /**
@@ -383,7 +405,6 @@ var piwikHelper = {
 
 };
 
-
 String.prototype.trim = function() {
     return this.replace(/^\s+|\s+$/g,"");
 };
@@ -395,7 +416,7 @@ String.prototype.trim = function() {
  */
 function isEnterKey(e)
 {
-    return (window.event?window.event.keyCode:e.which)==13; 
+    return (window.event?window.event.keyCode:e.which)==13;
 }
 
 // workarounds
@@ -459,6 +480,16 @@ try {
             return value;
         };
     }
+
+    // Fix jQuery UI dialogs scrolling when click on links with tooltips
+    jQuery.ui.dialog.prototype._focusTabbable = $.noop;
+
+    // Fix jQuery UI tooltip displaying when dialog is closed by Esc key
+    jQuery(document).keyup(function(e) {
+      if (e.keyCode == 27) {
+          $('.ui-tooltip').hide();
+      }
+    });
+
 } catch (e) {}
 }(jQuery));
-

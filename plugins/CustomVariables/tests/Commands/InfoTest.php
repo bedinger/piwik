@@ -12,18 +12,16 @@ namespace Piwik\Plugins\CustomVariables\tests\Commands;
 use Piwik\Plugins\CustomVariables\Commands\Info;
 use Piwik\Plugins\CustomVariables\Model;
 use Symfony\Component\Console\Application;
-use Symfony\Component\Console\Input\InputArgument;
-use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Tester\CommandTester;
+use Piwik\Tests\Framework\TestCase\IntegrationTestCase;
 
 /**
  * @group CustomVariables
  * @group CustomVariablesTest
- * @group Database
+ * @group Plugins
  * @group Plugins
  */
-class InfoTest extends \DatabaseTestCase
+class InfoTest extends IntegrationTestCase
 {
     public function testExecute_ShouldOutputInfoSuccess_IfEverythingIsOk()
     {

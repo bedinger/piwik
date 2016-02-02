@@ -9,7 +9,6 @@
 namespace Piwik\Period;
 
 use Exception;
-use Piwik\Config;
 use Piwik\Date;
 use Piwik\Period;
 use Piwik\Piwik;
@@ -23,20 +22,21 @@ class Factory
      *
      * @param string $period `"day"`, `"week"`, `"month"`, `"year"`, `"range"`.
      * @param Date|string $date A date within the period or the range of dates.
+     * @param Date|string $timezone Optional timezone that will be used only when $period is 'range' or $date is 'last|previous'
      * @throws Exception If `$strPeriod` is invalid.
      * @return \Piwik\Period
      */
-    static public function build($period, $date)
+    public static function build($period, $date, $timezone = 'UTC')
     {
         self::checkPeriodIsEnabled($period);
 
         if (is_string($date)) {
-            if (Period::isMultiplePeriod($date, $period) || $period == 'range') {
-                return new Range($period, $date);
+            if (Period::isMultiplePeriod($date, $period)
+                || $period == 'range') {
+                return new Range($period, $date, $timezone);
             }
             $date = Date::factory($date);
         }
-
 
         switch ($period) {
             case 'day':
@@ -59,7 +59,7 @@ class Factory
 
     public static function checkPeriodIsEnabled($period)
     {
-        if(!self::isPeriodEnabledForAPI($period)) {
+        if (!self::isPeriodEnabledForAPI($period)) {
             self::throwExceptionInvalidPeriod($period);
         }
     }
@@ -75,7 +75,6 @@ class Factory
         $message = Piwik::translate('General_ExceptionInvalidPeriod', array($strPeriod, $periods));
         throw new Exception($message);
     }
-
 
     /**
      * Creates a Period instance using a period, date and timezone.
@@ -116,18 +115,16 @@ class Factory
      */
     public static function isPeriodEnabledForAPI($period)
     {
-        $enabledPeriodsInAPI = self::getPeriodsEnabledForAPI();
-        return in_array($period, $enabledPeriodsInAPI);
+        $periodValidator = new PeriodValidator();
+        return $periodValidator->isPeriodAllowedForAPI($period);
     }
 
     /**
      * @return array
      */
-    private static function getPeriodsEnabledForAPI()
+    public static function getPeriodsEnabledForAPI()
     {
-        $enabledPeriodsInAPI = Config::getInstance()->General['enabled_periods_API'];
-        $enabledPeriodsInAPI = explode(",", $enabledPeriodsInAPI);
-        $enabledPeriodsInAPI = array_map('trim', $enabledPeriodsInAPI);
-        return $enabledPeriodsInAPI;
+        $periodValidator = new PeriodValidator();
+        return $periodValidator->getPeriodsAllowedForAPI();
     }
 }

@@ -1,5 +1,5 @@
 /*!
- * Piwik - Web Analytics
+ * Piwik - free/libre analytics platform
  *
  * @link http://piwik.org
  * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
@@ -297,8 +297,49 @@
             }
         }
 
-        for (var i = 0; i < columnCount; i++) {
-            $('.col', dashboardElement)[i].className = 'col width-' + columnWidth[i];
+        switch (layout) {
+            case '100':
+                $('.col', dashboardElement).removeClass()
+                    .addClass('col col-sm-12');
+                break;
+            case '50-50':
+                $('.col', dashboardElement).removeClass()
+                    .addClass('col col-sm-6');
+                break;
+            case '67-33':
+                $('.col', dashboardElement)[0].className = 'col col-sm-8';
+                $('.col', dashboardElement)[1].className = 'col col-sm-4';
+                break;
+            case '33-67':
+                $('.col', dashboardElement)[0].className = 'col col-sm-4';
+                $('.col', dashboardElement)[1].className = 'col col-sm-8';
+                break;
+            case '33-33-33':
+                $('.col', dashboardElement)[0].className = 'col col-sm-4';
+                $('.col', dashboardElement)[1].className = 'col col-sm-4';
+                $('.col', dashboardElement)[2].className = 'col col-sm-4';
+                break;
+            case '40-30-30':
+                $('.col', dashboardElement)[0].className = 'col col-sm-6';
+                $('.col', dashboardElement)[1].className = 'col col-sm-3';
+                $('.col', dashboardElement)[2].className = 'col col-sm-3';
+                break;
+            case '30-40-30':
+                $('.col', dashboardElement)[0].className = 'col col-sm-3';
+                $('.col', dashboardElement)[1].className = 'col col-sm-6';
+                $('.col', dashboardElement)[2].className = 'col col-sm-3';
+                break;
+            case '30-30-40':
+                $('.col', dashboardElement)[0].className = 'col col-sm-3';
+                $('.col', dashboardElement)[1].className = 'col col-sm-3';
+                $('.col', dashboardElement)[2].className = 'col col-sm-6';
+                break;
+            case '25-25-25-25':
+                $('.col', dashboardElement)[0].className = 'col col-sm-3';
+                $('.col', dashboardElement)[1].className = 'col col-sm-3';
+                $('.col', dashboardElement)[2].className = 'col col-sm-3';
+                $('.col', dashboardElement)[3].className = 'col col-sm-3';
+                break;
         }
 
         makeWidgetsSortable();
@@ -436,24 +477,26 @@
                 return $(this).attr('id').indexOf('Dashboard_embeddedIndex') == 0;
             }).remove();
 
+            if (dashboards.length === 0) {
+                dashboards = [{iddashboard: 1, name: _pk_translate('Dashboard_Dashboard')}];
+            }
+
             if (dashboards.length > 1
                 || dashboardMenuListItems.length >= 1
             ) {
                 var items = [];
                 for (var i = 0; i < dashboards.length; i++) {
-                    var $link = $('<a/>').attr('data-idDashboard', dashboards[i].iddashboard).text(dashboards[i].name);
+                    var $link = $('<a/>').attr('data-idDashboard', dashboards[i].iddashboard).text(dashboards[i].name).addClass('item title');
                     var $li = $('<li/>').attr('id', 'Dashboard_embeddedIndex_' + dashboards[i].iddashboard)
                                         .addClass('dashboardMenuItem').append($link);
                     items.push($li);
 
                     if (dashboards[i].iddashboard == dashboardId) {
                         dashboardName = dashboards[i].name;
-                        $li.addClass('sfHover');
+                        $li.addClass('sfActive');
                     }
                 }
                 dashboardMenuList.prepend(items);
-            } else {
-                dashboardMenuList.hide();
             }
 
             dashboardMenuList.find('a[data-idDashboard]').click(function (e) {
@@ -464,13 +507,13 @@
                 if (typeof piwikMenu != 'undefined') {
                     piwikMenu.activateMenu('Dashboard', 'embeddedIndex');
                 }
-                $('#Dashboard ul li').removeClass('sfHover');
+                $('#Dashboard ul li').removeClass('sfActive');
                 if ($(dashboardElement).length) {
                     $(dashboardElement).dashboard('loadDashboard', idDashboard);
                 } else {
                     broadcast.propagateAjax('module=Dashboard&action=embeddedIndex&idDashboard=' + idDashboard);
                 }
-                $(this).closest('li').addClass('sfHover');
+                $(this).closest('li').addClass('sfActive');
             });
         };
 

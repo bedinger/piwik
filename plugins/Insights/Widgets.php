@@ -1,6 +1,6 @@
 <?php
 /**
- * Piwik - Open source web analytics
+ * Piwik - free/libre analytics platform
  *
  * @link http://piwik.org
  * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
@@ -8,17 +8,13 @@
  */
 namespace Piwik\Plugins\Insights;
 
-use Piwik\WidgetsList;
-
 class Widgets extends \Piwik\Plugin\Widgets
 {
-    public function configure(WidgetsList $widgetsList)
+    protected $category = 'Insights_WidgetCategory';
+
+    public function init()
     {
-        $category   = 'Insights_WidgetCategory';
-        $controller = 'Insights';
-
-        $widgetsList->add($category, 'Insights_OverviewWidgetTitle', $controller, 'getInsightsOverview');
-        $widgetsList->add($category, 'Insights_MoversAndShakersWidgetTitle', $controller, 'getOverallMoversAndShakers');
+        $this->addWidget('Insights_OverviewWidgetTitle', 'getInsightsOverview');
+        $this->addWidget('Insights_MoversAndShakersWidgetTitle', 'getOverallMoversAndShakers');
     }
-
 }

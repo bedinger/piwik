@@ -21,12 +21,12 @@ use Piwik\SettingsPiwik;
 class UsersManager extends \Piwik\Plugin
 {
     const PASSWORD_MIN_LENGTH = 6;
-    const PASSWORD_MAX_LENGTH = 26;
+    const PASSWORD_MAX_LENGTH = 80;
 
     /**
-     * @see Piwik\Plugin::getListHooksRegistered
+     * @see Piwik\Plugin::registerEvents
      */
-    public function getListHooksRegistered()
+    public function registerEvents()
     {
         return array(
             'AssetManager.getJavaScriptFiles'        => 'getJsFiles',
@@ -34,7 +34,8 @@ class UsersManager extends \Piwik\Plugin
             'SitesManager.deleteSite.end'            => 'deleteSite',
             'Tracker.Cache.getSiteAttributes'        => 'recordAdminUsersInCache',
             'Translate.getClientSideTranslationKeys' => 'getClientSideTranslationKeys',
-            'Platform.initialized'                   => 'onPlatformInitialized'
+            'Platform.initialized'                   => 'onPlatformInitialized',
+            'CronArchive.getTokenAuth'               => 'getCronArchiveTokenAuth'
         );
     }
 
@@ -62,7 +63,18 @@ class UsersManager extends \Piwik\Plugin
         foreach ($users as $user) {
             $tokens[] = $user['token_auth'];
         }
+
         $attributes['admin_token_auth'] = $tokens;
+    }
+
+    public function getCronArchiveTokenAuth(&$tokens)
+    {
+        $model      = new Model();
+        $superUsers = $model->getUsersHavingSuperUserAccess();
+
+        foreach($superUsers as $superUser) {
+            $tokens[] = $superUser['token_auth'];
+        }
     }
 
     /**
@@ -82,6 +94,7 @@ class UsersManager extends \Piwik\Plugin
     {
         $jsFiles[] = "plugins/UsersManager/javascripts/usersManager.js";
         $jsFiles[] = "plugins/UsersManager/javascripts/usersSettings.js";
+        $jsFiles[] = "plugins/UsersManager/javascripts/giveViewAccess.js";
     }
 
     /**
@@ -105,7 +118,9 @@ class UsersManager extends \Piwik\Plugin
         ) {
             return true;
         }
+
         $l = strlen($input);
+
         return $l >= self::PASSWORD_MIN_LENGTH && $l <= self::PASSWORD_MAX_LENGTH;
     }
 
@@ -142,6 +157,20 @@ class UsersManager extends \Piwik\Plugin
         return md5($password);
     }
 
+    /**
+     * Checks the password hash length. Used as a sanity check.
+     *
+     * @param string $passwordHash The password hash to check.
+     * @param string $exceptionMessage Message of the exception thrown.
+     * @throws Exception if the password hash length is incorrect.
+     */
+    public static function checkPasswordHash($passwordHash, $exceptionMessage)
+    {
+        if (strlen($passwordHash) != 32) {  // MD5 hash length
+            throw new Exception($exceptionMessage);
+        }
+    }
+
     public function getClientSideTranslationKeys(&$translationKeys)
     {
         $translationKeys[] = "General_OrCancel";
@@ -151,5 +180,7 @@ class UsersManager extends \Piwik\Plugin
         $translationKeys[] = "UsersManager_ConfirmGrantSuperUserAccess";
         $translationKeys[] = "UsersManager_ConfirmProhibitOtherUsersSuperUserAccess";
         $translationKeys[] = "UsersManager_ConfirmProhibitMySuperUserAccess";
+        $translationKeys[] = "UsersManager_ExceptionUserHasViewAccessAlready";
+        $translationKeys[] = "UsersManager_ExceptionNoValueForUsernameOrEmail";
     }
 }

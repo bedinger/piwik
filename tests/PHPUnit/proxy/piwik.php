@@ -7,11 +7,13 @@
  *
  */
 
+use Piwik\Application\Environment;
 use Piwik\DataTable\Manager;
 use Piwik\Option;
 use Piwik\Plugins\UserCountry\LocationProvider\GeoIp;
 use Piwik\Site;
-use Piwik\Tracker\Cache;
+use Piwik\Tests\Framework\TestingEnvironmentManipulator;
+use Piwik\Tests\Framework\TestingEnvironmentVariables;
 use Piwik\Tracker;
 
 require realpath(dirname(__FILE__)) . "/includes.php";
@@ -20,15 +22,26 @@ require realpath(dirname(__FILE__)) . "/includes.php";
 // calling us waits for the full request to process before unblocking
 ob_start();
 
-Piwik_TestingEnvironment::addHooks();
+try {
+    $globalObservers = array(
+        array('Environment.bootstrapped', function () {
+            Tracker::setTestEnvironment();
+            Manager::getInstance()->deleteAll();
+            Option::clearCache();
+            Site::clearCache();
+        })
+    );
 
-GeoIp::$geoIPDatabaseDir = 'tests/lib/geoip-files';
+    Environment::setGlobalEnvironmentManipulator(new TestingEnvironmentManipulator(new TestingEnvironmentVariables(), $globalObservers));
 
-Tracker::setTestEnvironment();
-Manager::getInstance()->deleteAll();
-Option::clearCache();
-Site::clearCache();
-Cache::deleteTrackerCache();
+    GeoIp::$geoIPDatabaseDir = 'tests/lib/geoip-files';
 
-include PIWIK_INCLUDE_PATH . '/piwik.php';
-ob_end_flush();
+    include PIWIK_INCLUDE_PATH . '/piwik.php';
+} catch (Exception $ex) {
+    echo "Unexpected error during tracking: " . $ex->getMessage() . "\n" . $ex->getTraceAsString() . "\n";
+}
+
+if (ob_get_level() > 1) {
+    ob_end_flush();
+}
+

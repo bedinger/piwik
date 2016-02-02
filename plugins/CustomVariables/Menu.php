@@ -4,21 +4,30 @@
  *
  * @link http://piwik.org
  * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
- *
  */
+
 namespace Piwik\Plugins\CustomVariables;
 
-use Piwik\Db;
-use Piwik\Menu\MenuReporting;
+use Piwik\Common;
+use Piwik\Menu\MenuUser;
+use Piwik\Piwik;
+use Piwik\Plugins\UsersManager\UserPreferences;
 
 /**
+ * This class allows you to add, remove or rename menu items.
+ * To configure a menu (such as Admin Menu, Reporting Menu, User Menu...) simply call the corresponding methods as
+ * described in the API-Reference http://developer.piwik.org/api-reference/Piwik/Menu/MenuAbstract
  */
 class Menu extends \Piwik\Plugin\Menu
 {
-
-    public function configureReportingMenu(MenuReporting $menu)
+    public function configureUserMenu(MenuUser $menu)
     {
-        $menu->add('General_Visitors', 'CustomVariables_CustomVariables', array('module' => 'CustomVariables', 'action' => 'index'), $display = true, $order = 50);
-    }
+        $userPreferences = new UserPreferences();
+        $default = $userPreferences->getDefaultWebsiteId();
+        $idSite = Common::getRequestVar('idSite', $default, 'int');
 
+        if (Piwik::isUserHasAdminAccess($idSite)) {
+            $menu->addManageItem('Custom Variables', $this->urlForAction('manage'), $orderId = 15);
+        }
+    }
 }

@@ -1,5 +1,5 @@
 /*!
- * Piwik - Web Analytics
+ * Piwik - free/libre analytics platform
  *
  * @link http://piwik.org
  * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
@@ -15,27 +15,36 @@
  * </div>
  * Will execute the "executeMyFunction" function in the current scope once the yes button is pressed.
  */
-angular.module('piwikApp.directive').directive('piwikDialog', function(piwik) {
+(function () {
+    angular.module('piwikApp.directive').directive('piwikDialog', piwikDialog);
 
-    return {
-        restrict: 'A',
-        link: function(scope, element, attrs) {
+    piwikDialog.$inject = ['piwik', '$parse'];
 
-            element.css('display', 'none');
+    function piwikDialog(piwik, $parse) {
 
-            element.on( "dialogclose", function() {
-                scope.$eval(attrs.piwikDialog+'=false');
-            });
+        return {
+            restrict: 'A',
+            link: function(scope, element, attrs) {
 
-            scope.$watch(attrs.piwikDialog, function(newValue, oldValue) {
-                if (newValue) {
-                    piwik.helper.modalConfirm(element, {yes: function() {
-                        if (attrs.yes) {
-                            scope.$eval(attrs.yes);
-                        }
-                    }});
-                }
-            });
-        }
-    };
-});
+                element.css('display', 'none');
+
+                element.on( "dialogclose", function() {
+                    setTimeout(function () {
+                        scope.$apply($parse(attrs.piwikDialog).assign(scope, false));
+                    }, 0);
+                });
+
+                scope.$watch(attrs.piwikDialog, function(newValue, oldValue) {
+                    if (newValue) {
+                        piwik.helper.modalConfirm(element, {yes: function() {
+                            if (attrs.yes) {
+                                scope.$eval(attrs.yes);
+                                setTimeout(function () { scope.$apply(); }, 0);
+                            }
+                        }});
+                    }
+                });
+            }
+        };
+    }
+})();
