@@ -1,5 +1,5 @@
 /*!
- * Piwik - Web Analytics
+ * Piwik - free/libre analytics platform
  *
  * @link http://piwik.org
  * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
@@ -38,6 +38,7 @@ function sendUserSettingsAJAX() {
     postParams.defaultReport = defaultReport;
     postParams.defaultDate = defaultDate;
     postParams.language = $('#userSettingsTable #language').val();
+    postParams.timeformat = $('#userSettingsTable #timeformat').val();
 
     var ajaxHandler = new ajaxHelper();
     ajaxHandler.addParams({

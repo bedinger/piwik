@@ -8,7 +8,6 @@
  */
 namespace Piwik\Plugins\ScheduledReports;
 
-use Piwik\Common;
 use Piwik\Piwik;
 use Piwik\Plugins\LanguagesManager\LanguagesManager;
 use Piwik\Plugins\SegmentEditor\API as APISegmentEditor;
@@ -66,7 +65,7 @@ class Controller extends \Piwik\Plugin\Controller
             }
         }
         $view->reports = $reports;
-        $view->reportsJSON = Common::json_encode($reportsById);
+        $view->reportsJSON = json_encode($reportsById);
 
         $view->downloadOutputType = API::OUTPUT_INLINE;
 

@@ -5,16 +5,19 @@
  * @link http://piwik.org
  * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
  */
+namespace Piwik\Tests\Fixtures;
 
 use Piwik\Date;
 use Piwik\Plugins\UserCountry\LocationProvider;
+use Piwik\Tests\Framework\Fixture;
+use Piwik\Tests\Framework\Mock\LocationProvider as MockLocationProvider;
 
-require_once PIWIK_INCLUDE_PATH . '/tests/PHPUnit/MockLocationProvider.php';
+require_once PIWIK_INCLUDE_PATH . '/tests/PHPUnit/Framework/Mock/LocationProvider.php';
 
 /**
  * Adds one site and tracks 60 visits (15 visitors, one action per visit).
  */
-class Test_Piwik_Fixture_ManyVisitsWithMockLocationProvider extends Fixture
+class ManyVisitsWithMockLocationProvider extends Fixture
 {
     public $idSite = 1;
     public $dateTime = '2010-01-03 01:22:33';
@@ -30,11 +33,13 @@ class Test_Piwik_Fixture_ManyVisitsWithMockLocationProvider extends Fixture
         $this->setUpWebsitesAndGoals();
         $this->setMockLocationProvider();
         $this->trackVisits();
+
+        ManyVisitsWithGeoIP::unsetLocationProvider();
     }
 
     public function tearDown()
     {
-        Test_Piwik_Fixture_ManyVisitsWithGeoIP::unsetLocationProvider();
+        ManyVisitsWithGeoIP::unsetLocationProvider();
     }
 
     private function setUpWebsitesAndGoals()
@@ -118,7 +123,7 @@ class Test_Piwik_Fixture_ManyVisitsWithMockLocationProvider extends Fixture
 
         // track outlinks
         $this->trackActions($t, $visitorCounter, 'outlink', $userAgents, $resolutions);
-        
+
         // track ecommerce product orders
         $this->trackOrders($t);
     }
@@ -173,15 +178,15 @@ class Test_Piwik_Fixture_ManyVisitsWithMockLocationProvider extends Fixture
             }
         }
     }
-    
+
     private function trackOrders($t)
     {
         $nextDay = Date::factory($this->nextDay);
         $t->setForceVisitDateTime($nextDay);
-        
+
         for ($i = 0; $i != 25; ++$i) {
             $cat = $i % 5;
-            
+
             $t->setNewVisitorId();
             $t->setIp("155.5.4.$i");
             $t->setEcommerceView("id_book$i",  "Book$i", "Books Cat #$cat", 7.50);
@@ -218,5 +223,4 @@ class Test_Piwik_Fixture_ManyVisitsWithMockLocationProvider extends Fixture
             self::makeLocation('Yokohama', '19', 'JP'),
         );
     }
-
 }

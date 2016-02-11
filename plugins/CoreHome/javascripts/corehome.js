@@ -1,5 +1,5 @@
 /*!
- * Piwik - Web Analytics
+ * Piwik - free/libre analytics platform
  *
  * @link http://piwik.org
  * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
@@ -27,16 +27,23 @@
                 module: 'CoreHome',
                 action: 'checkForUpdates'
             }, 'get');
+
+            var $titleElement = $(this);
+            $titleElement.addClass('activityIndicator');
             ajaxRequest.setCallback(function (response) {
                 headerMessage.fadeOut('slow', function () {
                     response = $(response);
 
+                    $titleElement.removeClass('activityIndicator');
+
                     var newVersionAvailable = response.hasClass('header_alert');
                     if (newVersionAvailable) {
                         headerMessage.replaceWith(response);
+                        headerMessage.show();
                     }
                     else {
-                        headerMessage.html(_pk_translate('CoreHome_YouAreUsingTheLatestVersion')).show();
+                        headerMessage.find('.title').html(_pk_translate('CoreHome_YouAreUsingTheLatestVersion'));
+                        headerMessage.show();
                         setTimeout(function () {
                             headerMessage.fadeOut('slow', function () {
                                 headerMessage.replaceWith(response);
@@ -54,7 +61,7 @@
         // when clicking the header message, show the long message w/o needing to hover
         headerMessageParent.on('click', '#header_message', function (e) {
             if (e.target.tagName.toLowerCase() != 'a') {
-                $(this).toggleClass('active');
+                $(this).toggleClass('expanded');
             }
         });
 
@@ -142,19 +149,48 @@
             var widgetUniqueId = widgetParams.module + widgetParams.action;
             currentWidgetLoading = widgetUniqueId;
 
-            widgetsHelper.loadWidgetAjax(widgetUniqueId, widgetParams, function (response) {
+            var ajaxRequest = new ajaxHelper();
+            ajaxRequest.addParams(widgetParams, 'get');
+            ajaxRequest.setCallback(function (response) {
                 // if the widget that was loaded was not for the latest clicked link, do nothing w/ the response
                 if (widgetUniqueId != currentWidgetLoading) {
                     return;
                 }
 
                 loading.hide();
-                report.html($(response)).css('display', 'inline-block');
+                report.css('display', 'inline-block').html($(response));
 
                 // scroll to report
                 piwikHelper.lazyScrollTo(report, 400);
             });
+            ajaxRequest.setErrorCallback(function (deferred, status) {
+                if (status == 'abort' || !deferred || deferred.status < 400 || deferred.status >= 600) {
+                    return;
+                }
+
+                loading.hide();
+
+                var errorMessage = _pk_translate('General_ErrorRequest', ['', '']);
+                if ($('#loadingError').html()) {
+                    errorMessage = $('#loadingError').html();
+                }
+
+                report.css('display', 'inline-block').html('<div class="dimensionLoadingError">' + errorMessage + '</div>');
+            });
+            ajaxRequest.setFormat('html');
+            ajaxRequest.send(false);
         });
     });
+    
+
+
 
 }(jQuery));
+
+$( document ).ready(function() {
+   $('.accessibility-skip-to-content').click(function(e){
+        $('a[name="main"]').attr('tabindex', -1).focus();
+        $(window).scrollTo($('a[name="main"]'));
+    });
+
+});

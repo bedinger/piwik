@@ -13,7 +13,6 @@ use Piwik\Common;
 use Piwik\Plugin\ConsoleCommand;
 use Piwik\Plugins\CustomVariables\CustomVariables;
 use Piwik\Plugins\CustomVariables\Model;
-use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
@@ -29,7 +28,7 @@ class Info extends ConsoleCommand
 
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-        $maxVars = CustomVariables::getMaxCustomVariables();
+        $maxVars = CustomVariables::getNumUsableCustomVariables();
 
         if ($this->hasEverywhereSameAmountOfVariables()) {
             $this->writeSuccessMessage($output, array(
@@ -63,7 +62,7 @@ class Info extends ConsoleCommand
                 return false;
             }
         }
-        
+
         return true;
     }
 }

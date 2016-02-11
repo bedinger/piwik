@@ -8,12 +8,13 @@
  */
 namespace Piwik\Plugins\Installation;
 
+use Piwik\API\Request;
 use Piwik\Common;
 use Piwik\Config;
 use Piwik\FrontController;
-use Piwik\Menu\MenuAbstract;
 use Piwik\Piwik;
-use Piwik\Translate;
+use Piwik\Plugins\Installation\Exception\DatabaseConnectionFailedException;
+use Piwik\View as PiwikView;
 
 /**
  *
@@ -23,17 +24,38 @@ class Installation extends \Piwik\Plugin
     protected $installationControllerName = '\\Piwik\\Plugins\\Installation\\Controller';
 
     /**
-     * @see Piwik\Plugin::getListHooksRegistered
+     * @see Piwik\Plugin::registerEvents
      */
-    public function getListHooksRegistered()
+    public function registerEvents()
     {
         $hooks = array(
             'Config.NoConfigurationFile'      => 'dispatch',
             'Config.badConfigurationFile'     => 'dispatch',
+            'Db.cannotConnectToDb'            => 'displayDbConnectionMessage',
             'Request.dispatch'                => 'dispatchIfNotInstalledYet',
             'AssetManager.getStylesheetFiles' => 'getStylesheetFiles',
         );
         return $hooks;
+    }
+
+    public function displayDbConnectionMessage($exception = null)
+    {
+        Common::sendResponseCode(500);
+
+        $errorMessage = $exception->getMessage();
+
+        if (Request::isApiRequest($_GET)) {
+            $ex = new DatabaseConnectionFailedException($errorMessage);
+            throw $ex;
+        }
+
+        $view = new PiwikView("@Installation/cannotConnectToDb");
+        $view->exceptionMessage = $errorMessage;
+
+        $ex = new DatabaseConnectionFailedException($view->render());
+        $ex->setIsHtmlMessage();
+
+        throw $ex;
     }
 
     public function dispatchIfNotInstalledYet(&$module, &$action, &$parameters)
@@ -77,8 +99,6 @@ class Installation extends \Piwik\Plugin
         } else {
             $message = '';
         }
-
-        Translate::loadCoreTranslation();
 
         $action = Common::getRequestVar('action', 'welcome', 'string');
 

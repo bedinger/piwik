@@ -20,7 +20,7 @@ use Piwik\Updates;
 class Updates_1_8_3_b1 extends Updates
 {
 
-    static function getSql()
+    public function getMigrationQueries(Updater $updater)
     {
         return array(
             'ALTER TABLE `' . Common::prefixTable('site') . '`
@@ -44,9 +44,9 @@ class Updates_1_8_3_b1 extends Updates
         );
     }
 
-    static function update()
+    public function doUpdate(Updater $updater)
     {
-        Updater::updateDatabase(__FILE__, self::getSql());
+        $updater->executeMigrationQueries(__FILE__, $this->getMigrationQueries($updater));
         if (!\Piwik\Plugin\Manager::getInstance()->isPluginLoaded('ScheduledReports')) {
             return;
         }
@@ -60,8 +60,7 @@ class Updates_1_8_3_b1 extends Updates
             // - delete Common::prefixTable('pdf')
 
             $reports = Db::fetchAll('SELECT * FROM `' . Common::prefixTable('pdf') . '`');
-            foreach ($reports AS $report) {
-
+            foreach ($reports as $report) {
                 $idreport = $report['idreport'];
                 $idsite = $report['idsite'];
                 $login = $report['login'];
@@ -98,8 +97,8 @@ class Updates_1_8_3_b1 extends Updates
                          is_null($period) ? ScheduledReports::DEFAULT_PERIOD : $period,
                          ScheduledReports::EMAIL_TYPE,
                          is_null($format) ? ScheduledReports::DEFAULT_REPORT_FORMAT : $format,
-                         Common::json_encode(preg_split('/,/', $reports)),
-                         Common::json_encode($parameters),
+                         json_encode(preg_split('/,/', $reports)),
+                         json_encode($parameters),
                          $ts_created,
                          $ts_last_sent,
                          $deleted
@@ -110,6 +109,5 @@ class Updates_1_8_3_b1 extends Updates
             Db::query('DROP TABLE `' . Common::prefixTable('pdf') . '`');
         } catch (\Exception $e) {
         }
-
     }
 }

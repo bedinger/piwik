@@ -1,5 +1,5 @@
 /*!
- * Piwik - Web Analytics
+ * Piwik - free/libre analytics platform
  *
  * @link http://piwik.org
  * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
@@ -118,9 +118,12 @@
             var self = this, currentWidget = this.element;
 
             function onWidgetLoadedReplaceElementWithContent(loadedContent) {
-                $('.widgetContent', currentWidget).html(loadedContent);
-                $('.widgetContent', currentWidget).removeClass('loading');
-                $('.widgetContent', currentWidget).trigger('widget:create', [self]);
+                var $widgetContent = $('.widgetContent', currentWidget);
+
+                $widgetContent.html(loadedContent);
+                piwikHelper.compileAngularComponents($widgetContent);
+                $widgetContent.removeClass('loading');
+                $widgetContent.trigger('widget:create', [self]);
             }
 
             // Reading segment from hash tag (standard case) or from the URL (when embedding dashboard)
@@ -134,7 +137,19 @@
             }
 
             var params = $.extend(this.widgetParameters, overrideParams || {});
-            widgetsHelper.loadWidgetAjax(this.uniqueId, params, onWidgetLoadedReplaceElementWithContent);
+            widgetsHelper.loadWidgetAjax(this.uniqueId, params, onWidgetLoadedReplaceElementWithContent, function (deferred, status) {
+                if (status == 'abort' || !deferred || deferred.status < 400 || deferred.status >= 600) {
+                    return;
+                }
+
+                $('.widgetContent', currentWidget).removeClass('loading');
+                var errorMessage = _pk_translate('General_ErrorRequest', ['', '']);
+                if ($('#loadingError').html()) {
+                    errorMessage = $('#loadingError').html();
+                }
+
+                $('.widgetContent', currentWidget).html('<div class="widgetLoadingError">' + errorMessage + '</div>');
+            });
 
             return this;
         },
@@ -283,6 +298,8 @@
 
             var width = Math.floor($('body').width() * 0.7);
 
+            var isFooterExpanded = $('.dataTableFeatures', this.element).hasClass('expanded');
+
             var self = this;
             this.element.dialog({
                 title: '',
@@ -293,6 +310,9 @@
                 autoOpen: true,
                 close: function (event, ui) {
                     self.isMaximised = false;
+                    if (!isFooterExpanded) {
+                        $('.dataTableFeatures', self.element).removeClass('expanded');
+                    }
                     $('body').off('.dashboardWidget');
                     $(this).dialog("destroy");
                     $('#' + self.uniqueId + '-placeholder').replaceWith(this);
@@ -303,6 +323,7 @@
                 }
             });
             this.element.find('div.piwik-graph').trigger('resizeGraph');
+            $('.dataTableFeatures', this.element).addClass('expanded');
 
             var currentWidget = this.element;
             $('body').on('click.dashboardWidget', function (ev) {

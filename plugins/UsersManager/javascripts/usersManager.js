@@ -1,5 +1,5 @@
 /*!
- * Piwik - Web Analytics
+ * Piwik - free/libre analytics platform
  *
  * @link http://piwik.org
  * @license http://www.gnu.org/licenses/gpl-3.0.html GPL v3 or later
@@ -229,7 +229,11 @@ $(document).ready(function () {
             $(this)
                 .toggle()
                 .parent()
-                .prepend($('<input type="submit" class="submit updateuser"  value="' + _pk_translate('General_Save') + '" />')
+                .prepend($('<a class="canceluser">' + _pk_translate('General_OrCancel', ['', '']) + '</a>')
+                    .click(function () {
+                        piwikHelper.redirect();
+                    })
+                ).prepend($('<input type="submit" class="submit updateuser"  value="' + _pk_translate('General_Save') + '" />')
                     .click(function () {
                         var onValidate = function () {
                             sendUpdateUserAJAX($('tr#' + idRow));
@@ -240,7 +244,7 @@ $(document).ready(function () {
                             onValidate();
                         }
                     })
-                );
+            );
         });
 
     $('.editable').keypress(submitOnEnter);
@@ -259,7 +263,7 @@ $(document).ready(function () {
         }
     );
 
-    $('.addrow').click(function () {
+    $('.admin .user .add-user').click(function () {
         piwikHelper.hideAjaxError();
         $(this).toggle();
 
@@ -268,10 +272,10 @@ $(document).ready(function () {
         newRowId = 'row' + newRowId;
 
         $($.parseHTML(' <tr id="' + newRowId + '">\
-				<td><input id="useradd_login" value="login?" size="10" /></td>\
-				<td><input id="useradd_password" value="password" size="10" /></td>\
-				<td><input id="useradd_email" value="email@domain.com" size="15" /></td>\
-				<td><input id="useradd_alias" value="alias" size="15" /></td>\
+				<td><input id="useradd_login" placeholder="username" size="10" /></td>\
+				<td><input id="useradd_password" placeholder="password" size="10" /></td>\
+				<td><input id="useradd_email" placeholder="email@domain.com" size="15" /></td>\
+				<td><input id="useradd_alias" placeholder="alias" size="15" /></td>\
 				<td>-</td>\
                 <td>-</td>\
 				<td><input type="submit" class="submit adduser"  value="' + _pk_translate('General_Save') + '" /></td>\
@@ -284,12 +288,11 @@ $(document).ready(function () {
         $('.cancel').click(function () {
             piwikHelper.hideAjaxError();
             $(this).parents('tr').remove();
-            $('.addrow').toggle();
+            $('.add-user').toggle();
         });
     });
 
-    $('#access .updateAccess')
-        .click(bindUpdateAccess);
+    $('#access .updateAccess').click(bindUpdateAccess);
 
     $('#superUserAccess .accessGranted, #superUserAccess .updateAccess').click(bindUpdateSuperUserAccess);
 
@@ -297,6 +300,14 @@ $(document).ready(function () {
     $('#usersManagerSiteSelect').bind('change', function (e, site) {
         if (site.id != piwik.idSite) {
             piwik.broadcast.propagateNewPage('segment=&idSite=' + site.id, false);
+        }
+    });
+
+    // Show the token_auth
+    $('.token_auth').click(function () {
+        var token = $(this).data('token');
+        if ($(this).text() != token) {
+            $(this).text(token);
         }
     });
 });

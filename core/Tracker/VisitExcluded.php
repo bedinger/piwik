@@ -8,10 +8,13 @@
  */
 namespace Piwik\Tracker;
 
+use Piwik\Cache as PiwikCache;
 use Piwik\Common;
-use Piwik\Config;
-use Piwik\IP;
+use Piwik\DeviceDetectorFactory;
+use Piwik\Network\IP;
 use Piwik\Piwik;
+use Piwik\Plugins\SitesManager\SiteUrls;
+use Piwik\Tracker\Visit\ReferrerSpamFilter;
 
 /**
  * This class contains the logic to exclude some visitors from being tracked as per user settings
@@ -19,22 +22,29 @@ use Piwik\Piwik;
 class VisitExcluded
 {
     /**
+     * @var ReferrerSpamFilter
+     */
+    private $spamFilter;
+
+    /**
      * @param Request $request
      * @param bool|string $ip
      * @param bool|string $userAgent
      */
     public function __construct(Request $request, $ip = false, $userAgent = false)
     {
-        if ($ip === false) {
+        $this->spamFilter = new ReferrerSpamFilter();
+
+        if (false === $ip) {
             $ip = $request->getIp();
         }
 
-        if ($userAgent === false) {
+        if (false === $userAgent) {
             $userAgent = $request->getUserAgent();
         }
 
-        $this->request = $request;
-        $this->idSite = $request->getIdSite();
+        $this->request   = $request;
+        $this->idSite    = $request->getIdSite();
         $this->userAgent = $userAgent;
         $this->ip = $ip;
     }
@@ -73,9 +83,9 @@ class VisitExcluded
 
         /**
          * Triggered on every tracking request.
-         * 
+         *
          * This event can be used to tell the Tracker not to record this particular action or visit.
-         * 
+         *
          * @param bool &$excluded Whether the request should be excluded or not. Initialized
          *                        to `false`. Event subscribers should set it to `true` in
          *                        order to exclude the request.
@@ -119,6 +129,14 @@ class VisitExcluded
             }
         }
 
+        // Check if request URL is excluded
+        if (!$excluded) {
+            $excluded = $this->isUrlExcluded();
+            if ($excluded) {
+                Common::printDebug("Unknown URL is not allowed to track.");
+            }
+        }
+
         if (!$excluded) {
             if ($this->isPrefetchDetected()) {
                 $excluded = true;
@@ -147,41 +165,53 @@ class VisitExcluded
      * As a result, these sophisticated bots exhibit characteristics of
      * browsers (cookies enabled, executing JavaScript, etc).
      *
+     * @see \DeviceDetector\Parser\Bot
+     *
      * @return boolean
      */
     protected function isNonHumanBot()
     {
         $allowBots = $this->request->getParam('bots');
 
-        return !$allowBots
-            // Seen in the wild
-        && (strpos($this->userAgent, 'Googlebot') !== false // Googlebot
-            || strpos($this->userAgent, 'Google Web Preview') !== false // Google Instant
-            || strpos($this->userAgent, 'AdsBot-Google') !== false // Google Adwords landing pages
-            || strpos($this->userAgent, 'Google Page Speed Insights') !== false // #4049
-            || strpos($this->userAgent, 'Google (+https://developers.google.com') !== false // Google Snippet https://developers.google.com/+/web/snippet/
-            || strpos($this->userAgent, 'facebookexternalhit') !== false // http://www.facebook.com/externalhit_uatext.php
-            || strpos($this->userAgent, 'baidu') !== false // Baidu
-            || strpos($this->userAgent, 'bingbot') !== false // Bingbot
-            || strpos($this->userAgent, 'BingPreview') !== false // BingPreview
-            || strpos($this->userAgent, 'YottaaMonitor') !== false // Yottaa
-            || strpos($this->userAgent, 'CloudFlare') !== false // CloudFlare-AlwaysOnline
+        $deviceDetector = DeviceDetectorFactory::getInstance($this->userAgent);
 
-            // Added as they are popular bots
-            || strpos($this->userAgent, 'pingdom') !== false // pingdom
-            || strpos($this->userAgent, 'yandex') !== false // yandex
-            || strpos($this->userAgent, 'exabot') !== false // Exabot
-            || strpos($this->userAgent, 'sogou') !== false // Sogou
-            || strpos($this->userAgent, 'soso') !== false // Soso
-            || IP::isIpInRange($this->ip, $this->getBotIpRanges()));
+        return !$allowBots
+            && ($deviceDetector->isBot() || $this->isIpInRange());
+    }
+
+    private function isIpInRange()
+    {
+        $cache = PiwikCache::getTransientCache();
+
+        $ip  = IP::fromBinaryIP($this->ip);
+        $key = 'VisitExcludedIsIpInRange' . $ip->toString();
+
+        if ($cache->contains($key)) {
+            $isInRanges = $cache->fetch($key);
+        } else {
+            if ($this->isChromeDataSaverUsed($ip)) {
+                $isInRanges = false;
+            } else {
+                $isInRanges = $ip->isInRanges($this->getBotIpRanges());
+            }
+
+            $cache->save($key, $isInRanges);
+        }
+
+        return $isInRanges;
+    }
+
+    private function isChromeDataSaverUsed(IP $ip)
+    {
+        // see https://github.com/piwik/piwik/issues/7733
+        return !empty($_SERVER['HTTP_VIA'])
+            && false !== strpos(strtolower($_SERVER['HTTP_VIA']), 'chrome-compression-proxy')
+            && $ip->isInRanges($this->getGoogleBotIpRanges());
     }
 
     protected function getBotIpRanges()
     {
-        return array(
-            // Google
-            '66.249.0.0/16',
-            '64.233.172.0/24',
+        return array_merge($this->getGoogleBotIpRanges(), array(
             // Live/Bing/MSN
             '64.4.0.0/18',
             '65.52.0.0/14',
@@ -193,12 +223,29 @@ class VisitExcluded
             '207.68.192.0/20',
             '131.253.26.0/20',
             '131.253.24.0/20',
+
             // Yahoo
             '72.30.198.0/20',
             '72.30.196.0/20',
             '98.137.207.0/20',
             // Chinese bot hammering websites
             '1.202.218.8'
+        ));
+    }
+
+    private function getGoogleBotIpRanges()
+    {
+        return array(
+            '216.239.32.0/19',
+            '64.233.160.0/19',
+            '66.249.80.0/20',
+            '72.14.192.0/18',
+            '209.85.128.0/17',
+            '66.102.0.0/20',
+            '74.125.0.0/16',
+            '64.18.0.0/20',
+            '207.126.144.0/20',
+            '173.194.0.0/16'
         );
     }
 
@@ -212,6 +259,7 @@ class VisitExcluded
             Common::printDebug('Piwik ignore cookie was found, visit not tracked.');
             return true;
         }
+
         return false;
     }
 
@@ -223,12 +271,39 @@ class VisitExcluded
     protected function isVisitorIpExcluded()
     {
         $websiteAttributes = Cache::getCacheWebsiteAttributes($this->idSite);
+
         if (!empty($websiteAttributes['excluded_ips'])) {
-            if (IP::isIpInRange($this->ip, $websiteAttributes['excluded_ips'])) {
-                Common::printDebug('Visitor IP ' . IP::N2P($this->ip) . ' is excluded from being tracked');
+            $ip = IP::fromBinaryIP($this->ip);
+            if ($ip->isInRanges($websiteAttributes['excluded_ips'])) {
+                Common::printDebug('Visitor IP ' . $ip->toString() . ' is excluded from being tracked');
                 return true;
             }
         }
+
+        return false;
+    }
+
+    /**
+     * Checks if request URL is excluded
+     * @return bool
+     */
+    protected function isUrlExcluded()
+    {
+        $site = Cache::getCacheWebsiteAttributes($this->idSite);
+
+        if (!empty($site['exclude_unknown_urls']) && !empty($site['urls'])) {
+            $url = $this->request->getParam('url');
+            $parsedUrl = parse_url($url);
+
+            $trackingUrl = new SiteUrls();
+            $urls = $trackingUrl->groupUrlsByHost(array($this->idSite => $site['urls']));
+
+            $idSites = $trackingUrl->getIdSitesMatchingUrl($parsedUrl, $urls);
+            $isUrlExcluded = !isset($idSites) || !in_array($this->idSite, $idSites);
+
+            return $isUrlExcluded;
+        }
+
         return false;
     }
 
@@ -244,6 +319,7 @@ class VisitExcluded
     protected function isUserAgentExcluded()
     {
         $websiteAttributes = Cache::getCacheWebsiteAttributes($this->idSite);
+
         if (!empty($websiteAttributes['excluded_user_agents'])) {
             foreach ($websiteAttributes['excluded_user_agents'] as $excludedUserAgent) {
                 // if the excluded user agent string part is in this visit's user agent, this visit should be excluded
@@ -252,6 +328,7 @@ class VisitExcluded
                 }
             }
         }
+
         return false;
     }
 
@@ -262,16 +339,6 @@ class VisitExcluded
      */
     protected function isReferrerSpamExcluded()
     {
-        $spamHosts = Config::getInstance()->Tracker['referrer_urls_spam'];
-        $spamHosts = explode(",", $spamHosts);
-
-        $referrerUrl = $this->request->getParam('urlref');
-        foreach($spamHosts as $spamHost) {
-            if( strpos($referrerUrl, $spamHost) !== false) {
-                Common::printDebug('Referrer URL is a known spam: ' . $spamHost);
-                return true;
-            }
-        }
-        return false;
+        return $this->spamFilter->isSpam($this->request);
     }
 }

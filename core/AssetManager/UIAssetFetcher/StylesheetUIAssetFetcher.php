@@ -15,14 +15,30 @@ class StylesheetUIAssetFetcher extends UIAssetFetcher
 {
     protected function getPriorityOrder()
     {
-        return array(
+        $theme = $this->getTheme();
+        $themeName = $theme->getThemeName();
+
+        $order = array(
             'libs/',
             'plugins/CoreHome/stylesheets/color_manager.css', // must be before other Piwik stylesheets
             'plugins/Morpheus/stylesheets/base.less',
-            'plugins\/((?!Morpheus).)*\/',
-            'plugins/Dashboard/stylesheets/dashboard.less',
-            'tests/',
         );
+
+        if ($themeName === 'Morpheus') {
+            $order[] = 'plugins\/((?!Morpheus).)*\/';
+        } else {
+            $order[] = sprintf('plugins\/((?!(Morpheus)|(%s)).)*\/', $themeName);
+        }
+
+        $order = array_merge(
+            $order,
+            array(
+                'plugins/Dashboard/stylesheets/dashboard.less',
+                'tests/',
+            )
+        );
+
+        return $order;
     }
 
     protected function retrieveFileLocations()
@@ -55,7 +71,7 @@ class StylesheetUIAssetFetcher extends UIAssetFetcher
     protected function addThemeFiles()
     {
         $theme = $this->getTheme();
-        if(!$theme) {
+        if (!$theme) {
             return;
         }
         $themeStylesheet = $this->getTheme()->getStylesheet();

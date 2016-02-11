@@ -13,20 +13,14 @@ namespace Piwik\Plugins\Insights;
 class Insights extends \Piwik\Plugin
 {
     /**
-     * @see Piwik\Plugin::getListHooksRegistered
+     * @see Piwik\Plugin::registerEvents
      */
-    public function getListHooksRegistered()
+    public function registerEvents()
     {
         return array(
             'AssetManager.getJavaScriptFiles' => 'getJsFiles',
-            'AssetManager.getStylesheetFiles' => 'getStylesheetFiles',
-            'ViewDataTable.addViewDataTable' => 'getAvailableVisualizations'
+            'AssetManager.getStylesheetFiles' => 'getStylesheetFiles'
         );
-    }
-
-    public function getAvailableVisualizations(&$visualizations)
-    {
-        $visualizations[] = __NAMESPACE__ . '\\Visualizations\\Insight';
     }
 
     public function getStylesheetFiles(&$stylesheets)

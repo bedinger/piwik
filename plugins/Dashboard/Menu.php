@@ -8,10 +8,7 @@
  */
 namespace Piwik\Plugins\Dashboard;
 
-use Exception;
-use Piwik\Common;
 use Piwik\Db;
-use Piwik\Menu\MenuAbstract;
 use Piwik\Menu\MenuReporting;
 use Piwik\Menu\MenuTop;
 use Piwik\Piwik;
@@ -24,36 +21,41 @@ class Menu extends \Piwik\Plugin\Menu
 {
     public function configureReportingMenu(MenuReporting $menu)
     {
-        $menu->add('Dashboard_Dashboard', '', array('module' => 'Dashboard', 'action' => 'embeddedIndex', 'idDashboard' => 1), true, 5);
+        $menu->addItem('Dashboard_Dashboard', '', array(), 5);
 
-        if (!Piwik::isUserIsAnonymous()) {
+        if (Piwik::isUserIsAnonymous()) {
+            $this->addDefaultDashboard($menu);
+        } else {
             $login = Piwik::getCurrentUserLogin();
 
             $dashboard  = new Dashboard();
             $dashboards = $dashboard->getAllDashboards($login);
 
-            $pos = 0;
-            foreach ($dashboards as $dashboard) {
-                $menu->add('Dashboard_Dashboard', $dashboard['name'], array('module' => 'Dashboard', 'action' => 'embeddedIndex', 'idDashboard' => $dashboard['iddashboard']), true, $pos);
-                $pos++;
+            if (empty($dashboards)) {
+                $this->addDefaultDashboard($menu);
+            } else {
+                $pos = 0;
+                foreach ($dashboards as $dashboard) {
+                    $menu->addItem('Dashboard_Dashboard', $dashboard['name'], $this->urlForAction('embeddedIndex', array('idDashboard' => $dashboard['iddashboard'])), $pos);
+                    $pos++;
+                }
             }
         }
+    }
+
+    private function addDefaultDashboard(MenuReporting $menu)
+    {
+        $menu->addItem('Dashboard_Dashboard', 'Dashboard_Dashboard', $this->urlForAction('embeddedIndex', array('idDashboard' => 1)));
     }
 
     public function configureTopMenu(MenuTop $menu)
     {
         $userPreferences = new UserPreferences();
         $idSite = $userPreferences->getDefaultWebsiteId();
-
         $tooltip = Piwik::translate('Dashboard_TopLinkTooltip', Site::getNameFor($idSite));
 
-        $urlParams = array(
-            'module' => 'CoreHome',
-            'action' => 'index',
-            'idSite' => $idSite,
-        );
-
-        $menu->add('Dashboard_Dashboard', null, $urlParams, true, 1, $tooltip);
+        $urlParams = $this->urlForModuleActionWithDefaultUserParams('CoreHome', 'index') ;
+        $menu->addItem('Dashboard_Dashboard', null, $urlParams, 1, $tooltip);
     }
 }
 

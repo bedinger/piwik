@@ -11,6 +11,7 @@ namespace Piwik\Plugins\Installation;
 use HTML_QuickForm2_DataSource_Array;
 use HTML_QuickForm2_Factory;
 use HTML_QuickForm2_Rule;
+use Piwik\Container\StaticContainer;
 use Piwik\Piwik;
 use Piwik\Plugins\UsersManager\UsersManager;
 use Piwik\QuickForm2;
@@ -53,21 +54,36 @@ class FormSuperUser extends QuickForm2
         $email->addRule('required', Piwik::translate('General_Required', Piwik::translate('Installation_Email')));
         $email->addRule('checkEmail', Piwik::translate('UsersManager_ExceptionInvalidEmail'));
 
-        $this->addElement('checkbox', 'subscribe_newsletter_security', null, array(
-                                                                                  'content' => '&nbsp;&nbsp;' . Piwik::translate('Installation_SecurityNewsletter'),
-                                                                             ));
+        $this->addElement('checkbox', 'subscribe_newsletter_piwikorg', null,
+            array(
+                'content' => '&nbsp;&nbsp;' . Piwik::translate('Installation_PiwikOrgNewsletter'),
+            ));
 
-        $this->addElement('checkbox', 'subscribe_newsletter_community', null, array(
-                                                                                   'content' => '&nbsp;&nbsp;' . Piwik::translate('Installation_CommunityNewsletter'),
-                                                                              ));
+        $piwikProNewsletter = Piwik::translate('Installation_PiwikProNewsletter',
+            array("<a href='http://piwik.pro?pk_medium=App_Newsletter_link&pk_source=Piwik_App&pk_campaign=App_Installation' style='color:#444;' rel='noreferrer' target='_blank'>", "</a>")
+        );
 
-        $this->addElement('submit', 'submit', array('value' => Piwik::translate('General_Next') . ' »', 'class' => 'submit'));
+        $currentLanguage = StaticContainer::get('Piwik\Translation\Translator')->getCurrentLanguage();
+
+        if ($currentLanguage == 'de') {
+            $piwikProNewsletter = Piwik::translate('Installation_PiwikProNewsletter',
+                array("<a href='http://piwikpro.de?pk_medium=App_Newsletter_link&pk_source=Piwik_App&pk_campaign=App_Installation' style='color:#444;' rel='noreferrer' target='_blank'>", "</a>")
+            );
+            $piwikProNewsletter = preg_replace('(Piwik PRO(?! GmbH))', 'Piwik PRO GmbH', $piwikProNewsletter);
+        }
+
+        $this->addElement('checkbox', 'subscribe_newsletter_piwikpro', null,
+            array(
+                'content' => '&nbsp;&nbsp;' . $piwikProNewsletter,
+            ));
+
+        $this->addElement('submit', 'submit', array('value' => Piwik::translate('General_Next') . ' »', 'class' => 'btn btn-lg'));
 
         // default values
         $this->addDataSource(new HTML_QuickForm2_DataSource_Array(array(
-                                                                       'subscribe_newsletter_community' => 1,
-                                                                       'subscribe_newsletter_security'  => 1,
-                                                                  )));
+            'subscribe_newsletter_piwikorg' => 1,
+            'subscribe_newsletter_piwikpro' => $currentLanguage == 'de' ? 0 : 1,
+        )));
     }
 }
 
