@@ -86,10 +86,6 @@ class Nonce
         // validate origin
         $origin = self::getOrigin();
         if (!empty($origin) &&
-            # AB Hack to get resnet.local working
-            # Hard to debug because TMG rewrites all text containing
-            # the target URL to the translated URL, including trace messages!
-            !stristr($origin, "resnet.local") &&
             ($origin == 'null'
                 || !in_array($origin, self::getAcceptableOrigins()))
         ) {
