@@ -644,15 +644,6 @@ class CronArchive
             return false;
         }
 
-        # AB 2/2/16 Commented-out the one line below, for the sake of the merge from upstream
-        #$success = true;
-
-	# AB 4/10/14 No week, month, or year aggregations. It takes too long.
-        #foreach (array('week', 'month', 'year') as $period) {
-        #    $success = $this->archiveVisitsAndSegments($idSite, $period, $lastTimestampWebsiteProcessedPeriods)
-        #        && $success;
-        #}
-
         /**
          * Trigger archiving for non-day periods
          */
